@@ -1,6 +1,6 @@
 # Dependências e licenças
 
-Este pacote contém o código do Acervo e suas referências a dependências. Não inclui as instalações das bibliotecas, Python, FFmpeg, Node, navegadores ou arquivos de mídia. Esta lista registra as dependências diretas; não é uma auditoria completa de redistribuição de executáveis ou de dependências transitivas.
+O repositório contém o código do Acervo e suas referências a dependências. O ZIP Windows em Releases inclui Python, bibliotecas, Node e FFmpeg. Os textos completos de licença acompanham o programa na pasta LICENSES; o pacote de fontes inclui as origens registradas em ORIGENS-DAS-DEPENDENCIAS.json e as fontes descritas em SOURCES.md.
 
 | Componente | Versão registrada | Licença declarada | Origem |
 | --- | --- | --- | --- |
@@ -13,9 +13,9 @@ Este pacote contém o código do Acervo e suas referências a dependências. Nã
 
 Metadados conferidos nas instalações locais usadas na preparação. As licenças completas e avisos pertencem aos respectivos projetos.
 
-O uso de Mutagen deve ser considerado na escolha de uma licença compatível e na redistribuição do conjunto. Não assuma que todos os componentes sejam MIT ou Unlicense.
+O código do Acervo foi licenciado sob GNU GPL versão 3 com autorização do responsável. Mutagen permanece sob GPL-2.0-or-later. Os demais componentes conservam seus termos e avisos; não são todos MIT ou Unlicense.
 
-FFmpeg e ffprobe: a licença depende da compilação e dos componentes habilitados. Consulte https://ffmpeg.org/legal.html e preserve as informações de compilação e fontes correspondentes se distribuir esses binários.
+FFmpeg e ffprobe deste pacote: N-125875-g5d4d3bdc61-20260731, Windows x64, GNU GPL versão 3 ou posterior. O build habilita GPL e version3, sem enable-nonfree. Configuração original em FFMPEG-BUILD.txt; fonte e receitas de compilação identificadas em SOURCES.md. Consulte também https://ffmpeg.org/legal.html. Os binários não foram modificados.
 
 Os executáveis oficiais do yt-dlp podem conter componentes sob GPL e outras licenças, diferentes da licença isolada do pacote Python. Consulte https://github.com/yt-dlp/yt-dlp#licensing.
 

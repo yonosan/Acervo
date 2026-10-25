@@ -1,3 +1,13 @@
+# Verificação do Acervo
+
+## 25/10/2026, 09:45 — Versão 1.9.0: inglês por padrão
+
+- 57 testes passaram em 19,932 s: 52 fluxos existentes, preferência de idioma e quatro testes do catálogo/traduções. As variáveis das mensagens e nomes dentro delas foram conferidos. A conferência do catálogo foi repetida após completar os textos.
+- Edge com perfil e biblioteca fictícios: inglês inicial, português salvo e preservado após recarregar, retorno ao inglês, mensagens de erro, resumos, revisão e escolha de formatos. Os títulos e artistas de teste iguais a palavras da interface não foram traduzidos. Nenhum erro JavaScript e nenhuma sobra conhecida de português nas sete abas verificadas.
+- Janela real do Windows: título e menus Open Acervo/Exit Acervo em inglês; mudança para português e reabertura em um segundo processo preservando a escolha. Volta ao inglês também verificada. Nenhuma conta real ou download pessoal foi usado.
+- Os dados persistidos das músicas e os valores internos dos estados das tarefas continuam compatíveis com versões anteriores. A tradução é aplicada na interface e em seus controles; nomes de arquivos e metadados são preservados.
+- Sem teste em outro computador, novo login real nas fontes ou assinatura digital. Os serviços externos e diálogos do sistema têm seus próprios idiomas.
+
 # Verificação da cópia para publicação
 
 ## 24/10/2026, 23:46 — Windows local

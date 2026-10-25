@@ -5,6 +5,7 @@ import hashlib
 from pathlib import Path
 import threading
 import time
+from i18n import translate
 
 
 class SingleInstance:
@@ -35,7 +36,7 @@ class SingleInstance:
                     time.sleep(.05)
             if not self.event:
                 self.close()
-                raise RuntimeError('O Acervo já está iniciando. Aguarde e tente abrir novamente.')
+                raise RuntimeError(translate('O Acervo já está iniciando. Aguarde e tente abrir novamente.'))
             self.wake()
         else:
             self.event = self.kernel.CreateEventW(None, False, False, name + '-show')
@@ -101,9 +102,23 @@ class BackgroundWindow:
         self.tray = NotifyIcon()
         self.tray.Icon, self.tray.Text, self.tray.ContextMenuStrip = self.icon, 'Acervo — abrir com dois cliques', self.menu
         self.tray.DoubleClick += self.show
+        self.apply_language_ui()
         self.tray.Visible = True
         self.app.DESKTOP_RUNTIME['available'] = True
         self.app.event('bandeja_pronta', 'Bandeja disponível: Abrir Acervo ou Sair do Acervo. Fechar a janela pode manter os downloads.')
+
+    def apply_language_ui(self):
+        language = self.app.config_read('language') or 'en'
+        self.window.native.Text = translate('Acervo — Música no seu PC', language)
+        if self.menu:
+            self.menu.Items[0].Text = translate('Abrir Acervo', language)
+            self.menu.Items[1].Text = translate('Sair do Acervo', language)
+        if self.tray:
+            self.tray.Text = translate('Acervo — abrir com dois cliques', language)
+
+    def update_language(self):
+        self.ui(self.apply_language_ui)
+        return True
 
     def watch_open(self):
         while not self.exiting and self.instance.wait():

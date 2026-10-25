@@ -728,5 +728,19 @@ class WindowsFlowTests(unittest.TestCase):
         self.post('settings',dict(folder_mode='same',background_enabled=True))
         self.assertTrue(self.client.get('/api/state').json()['background_enabled'])
 
+    def test_32_language_defaults_to_english_and_preserves_legacy_requests(self):
+        self.assertEqual(self.client.get('/api/state').json()['language'], 'en')
+        response=self.client.get('/')
+        self.assertEqual(response.headers['content-language'], 'en')
+        self.assertIn('id="app-i18n"',response.text)
+        self.assertEqual(self.post('settings',dict(folder_mode='same',language='pt-BR')).status_code,200)
+        self.post('settings',dict(folder_mode='ask'))
+        self.assertEqual(app.config_read('language'),'pt-BR')
+        self.assertEqual(self.client.get('/').headers['content-language'],'pt-BR')
+        self.assertEqual(self.post('settings',dict(folder_mode='same',language='xx')).status_code,422)
+        self.assertEqual(app.config_read('language'),'pt-BR')
+        self.post('settings',dict(folder_mode='same',language='en'))
+        self.assertEqual(self.client.get('/api/state').json()['language'],'en')
+
 
 if __name__=='__main__':unittest.main(verbosity=2)

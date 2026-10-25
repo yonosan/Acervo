@@ -8,6 +8,7 @@ import socket
 import sys
 import threading
 import time
+from i18n import translate
 from urllib.parse import urlsplit
 
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
@@ -146,7 +147,11 @@ def run_desktop(data, instance):
             background.exit()
             return True
 
-    window = webview.create_window('Acervo — Música no seu PC', origin + '/desktop/boot/' + ticket,
+        def update_language(self, token):
+            self._check(token)
+            return background.update_language()
+
+    window = webview.create_window(translate('Acervo — Música no seu PC', app.config_read('language') or 'en'), origin + '/desktop/boot/' + ticket,
                                     js_api=Bridge(), width=1280, height=900, min_size=(880, 650),
                                     background_color='#101216', text_select=True)
     from desktop_runtime import BackgroundWindow
@@ -165,5 +170,5 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except Exception as exc:
-        ctypes.windll.user32.MessageBoxW(None, str(exc) + '\n\nSe o componente de janela estiver ausente, instale o Microsoft Edge WebView2 Runtime pelo site oficial da Microsoft.', 'Acervo — Não foi possível abrir', 0x10)
+        ctypes.windll.user32.MessageBoxW(None, translate(str(exc)) + '\n\n' + translate('Se o componente de janela estiver ausente, instale o Microsoft Edge WebView2 Runtime pelo site oficial da Microsoft.'), translate('Acervo — Não foi possível abrir'), 0x10)
         raise

@@ -1,4 +1,10 @@
-# Acervo para Windows 1.8.0
+# Acervo para Windows 1.9.0
+
+## Idiomas / Languages
+
+English is the default interface language. To change it, open **Settings → Language**, select **English** or **Português (Brasil)**, then choose **Save settings**. The window reloads and the choice is kept when the app reopens.
+
+O inglês é o idioma padrão. Para usar português, abra **Settings → Language**, escolha **Português (Brasil)** e clique em **Save settings**. A escolha permanece ao reabrir. Títulos, artistas, álbuns, arquivos e os estados internos das tarefas mantêm seus dados originais. Diálogos do Windows e páginas de serviços externos podem seguir o idioma próprio desses serviços.
 
 1. Extraia o ZIP inteiro para uma pasta sua. Não abra o executável de dentro do ZIP.
 2. Abra **Acervo.exe** com dois cliques. Mantenha a pasta `_internal` junto dele.
@@ -19,7 +25,7 @@ O programa já leva Python, yt-dlp, FFmpeg e Node. Você não precisa abrir term
 
 ## ZIP portátil e atualização
 
-- **Acervo-Windows-1.8.0.zip** contém a pasta Acervo, o executável, `_internal` e instruções. Python, yt-dlp, FFmpeg e Node estão incluídos. Mantenha todos esses componentes juntos.
+- **Acervo-Windows-1.9.0.zip** contém a pasta Acervo, o executável, `_internal` e instruções. Python, yt-dlp, FFmpeg e Node estão incluídos. Mantenha todos esses componentes juntos.
 - O ZIP não contém seu banco local, músicas ou perfil de conexão. Uma extração nova começa com biblioteca vazia.
 - Para atualizar uma cópia existente, use **Sair do Acervo**, extraia os arquivos do programa sobre a pasta antiga e preserve `Dados` e suas músicas. Não substitua apenas o EXE nem apague a pasta `_internal`.
 

@@ -31,6 +31,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from catalog import AUDIO_EXT, archive_item, archive_search, match, parse_import
 from security import SourceError, open_public, validate_url, start_proxy
 import covers
+from i18n import CATALOG
 
 BASE = Path(__file__).resolve().parent
 DATA = Path(os.environ.get('DATA_DIR', str(BASE / 'data'))).resolve()
@@ -631,7 +632,7 @@ def logout(request: Request):
 
 @app.get('/api/health')
 def health():
-    return {'ok': True, 'version': '1.8.0'}
+    return {'ok': True, 'version': '1.9.0'}
 
 
 def cover_for(kind, identifier):
@@ -852,6 +853,7 @@ def state(events_all: bool = False):
     return {'tracks': tracks, 'jobs': jobs if DESKTOP else jobs[:500], 'events': records('event')[:1000 if events_all else 100],
             'desktop': DESKTOP, 'output_folder': config_read('output_folder') if DESKTOP else None,
             'folder_mode': config_read('folder_mode') or 'same',
+            'language': config_read('language') or 'en',
             'background_enabled': config_read('background_enabled') is not False,
             'desktop_runtime': dict(DESKTOP_RUNTIME),
             'spotify': SPOTIFY.status() if SPOTIFY else None,
@@ -864,6 +866,7 @@ def state(events_all: bool = False):
 class Settings(BaseModel):
     folder_mode: str = Field(pattern='^(ask|same)$')
     background_enabled: bool | None = None
+    language: str | None = Field(default=None, pattern='^(en|pt-BR)$')
 
 
 @app.post('/api/settings')
@@ -871,6 +874,9 @@ def settings(body: Settings):
     if not DESKTOP:
         raise SourceError('As preferências de pasta estão disponíveis no Windows.')
     config_write('folder_mode', body.folder_mode)
+    if body.language is not None:
+        config_write('language', body.language)
+        event('idioma', 'Idioma da interface alterado: ' + body.language)
     if body.background_enabled is not None:
         config_write('background_enabled', body.background_enabled)
         event('configuracao_segundo_plano', 'Fechar/minimizar recolhe para a bandeja; downloads continuam.' if body.background_enabled else 'Fechar a janela encerra o programa e pausa tarefas pendentes.')
@@ -1361,9 +1367,14 @@ def spotify_stop():
 
 @app.get('/')
 def index():
+    language = config_read('language') or 'en'
+    payload = json.dumps({'language': language, 'catalog': CATALOG}, ensure_ascii=False).replace('<', '\\u003c')
+    html = (BASE / 'static' / 'index.html').read_text('utf-8')
+    html = html.replace('<!--APP_I18N-->', '<script type="application/json" id="app-i18n">' + payload + '</script>')
+    html = html.replace('lang="pt-BR"', 'lang="' + language + '"')
     if DESKTOP:
-        return HTMLResponse((BASE / 'static' / 'index.html').read_text('utf-8').replace('<body>', '<body class="desktop">'))
-    return FileResponse(BASE / 'static' / 'index.html')
+        html = html.replace('<body>', '<body class="desktop">')
+    return HTMLResponse(html, headers={'Content-Language': language})
 
 
 app.mount('/static', StaticFiles(directory=BASE / 'static'), name='static')

@@ -1,11 +1,12 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
 const DESKTOP = document.body.classList.contains('desktop');
+const tr = window.AcervoI18n.translate;
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const duration = (v) => v ? `${Math.floor(v / 60)}:${String(Math.round(v % 60)).padStart(2, '0')}` : 'Duração não informada';
 const bytes = (v) => v ? `${(v / 1048576).toFixed(1)} MB` : 'Tamanho não informado';
-const time = (v) => new Date(v).toLocaleString('pt-BR');
+const time = (v) => new Date(v).toLocaleString(window.AcervoI18n.language === 'en' ? 'en-US' : 'pt-BR');
 const activeStates = ['Na fila', 'Baixando', 'Convertendo', 'Cancelando'];
 let state = {tracks: [], jobs: [], events: []}, results = [], selected = new Set(), trackSelection = new Set();
 let contextTrack = null, pendingDownloads = [], authenticated = false, polling = false, batchRunning = false, stopBatch = false;
@@ -30,7 +31,7 @@ function filterItems(name, items) {
   if(!terms.length) return items;
   const albums=new Map(state.tracks.map(track=>[track.id,track.album]));
   return items.filter(item=>{
-    const text=searchText(name==='activity' ? [item.message,item.action,item.job_id,time(item.time)].join(' ') : [item.title,item.artist,item.album || albums.get(item.item_id),item.state,item.output,item.error,item.created ? time(item.created) : ''].join(' '));
+    const text=searchText(name==='activity' ? [item.message,tr(item.message),item.action,item.job_id,time(item.time)].join(' ') : [item.title,item.artist,item.album || albums.get(item.item_id),item.state,tr(item.state),item.output,item.error,tr(item.error),item.created ? time(item.created) : ''].join(' '));
     return terms.every(term=>text.includes(term));
   });
 }
@@ -77,6 +78,11 @@ document.addEventListener('click', e => {
   if(button.dataset.list==='tracks') renderTracks(); else if(button.dataset.list==='events') renderEvents(); else if(button.dataset.list==='reviews') renderReviews(); else if(button.dataset.list==='results') renderResults(); else renderJobs();
   $('view-'+currentView).scrollIntoView({block:'start'});
 });
+
+function setUserText(id, value) {
+  $(id).setAttribute('data-i18n-skip', '');
+  $(id).textContent=value;
+}
 
 function toast(message, error = false) {
   $('toast').textContent = message;
@@ -165,7 +171,7 @@ function view(name) {
   $('tab-search-form').hidden=name==='discover';
   $('tab-search-status').hidden=name==='discover';
   $('tab-search-input').value=tabQueries[name] || '';
-  $('tab-search-label').textContent=`Pesquisar em ${names[name]}`;
+  $('tab-search-label').textContent=`Pesquisar em ${tr(names[name])}`;
   $('tab-search-input').placeholder=name==='activity' ? 'Mensagem, data ou tarefa' : 'Música, artista, álbum ou estado';
   if(name==='activity') refresh(true);
   renderTracks(); renderJobs(); renderEvents(); renderReviews(); renderSettings();
@@ -205,7 +211,7 @@ function formatControl(kind, item, output, reviewing=false) {
   const label=output.toUpperCase(),job=formatJobs.get(`${kind}:${item.id}:${output}`);
   if(job && activeStates.includes(job.state)) {
     const percent=job.progress==null ? null : Math.max(0,Math.min(99,Math.round(job.progress)));
-    const detail=job.state==='Na fila' ? 'Na fila' : job.state==='Cancelando' ? 'Cancelando' : percent==null ? job.state : `${job.state}: ${percent}%`;
+    const detail=job.state==='Na fila' ? tr('Na fila') : job.state==='Cancelando' ? tr('Cancelando') : percent==null ? tr(job.state) : `${tr(job.state)}: ${percent}%`;
     return `<button class="format-control format-progress ${percent==null ? 'indeterminate' : ''}" data-cancel="${esc(job.id)}" aria-label="Cancelar ${label} de ${esc(item.title)} — ${esc(detail)}" title="${esc(detail)} — clique no X para cancelar" ${job.state==='Cancelando' ? 'disabled' : ''}><svg class="progress-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="19"/><circle class="ring-value" cx="22" cy="22" r="19" pathLength="100" stroke-dasharray="${percent==null ? '25 75' : percent+' 100'}" transform="rotate(-90 22 22)"/></svg>${icon('close')}<small>${label}</small></button>`;
   }
   if(job?.state==='Concluída' && job.ready) return `<button class="format-control format-ready" data-play-saved="${esc(job.id)}" title="Abrir ${label} salvo" aria-label="Abrir ${label} de ${esc(item.title)}">${icon('check')}<small>${label}</small></button>`;
@@ -224,7 +230,7 @@ function resultCards(items, reviewing=false) {
     const formats = m.formats?.length ? [...new Set(m.formats.map(f => f.ext.toUpperCase()))].join(' / ') : 'Formatos após análise';
     const origin = m.url?.startsWith('https://') ? `<a href="${esc(m.url)}" target="_blank" rel="noreferrer" class="text-link">Abrir origem</a>` : '';
     const buttons=DESKTOP ? formatControl('media',m,'mp3',reviewing)+formatControl('media',m,'mp4',reviewing)+`<button class="icon-button" data-change-folder aria-label="Trocar pasta dos próximos downloads" title="Trocar pasta">${icon('folder')}</button>` : `<button class="button secondary" data-download="${esc(m.id)}">${icon('download')}Baixar</button>`;
-    return `<article class="result">${reviewing ? '' : `<input type="checkbox" class="result-check" value="${esc(m.id)}" aria-label="Selecionar ${esc(m.title)}" ${selected.has(m.id) ? 'checked' : ''}>`}${cover('media',m)}<div class="result-info"><strong>${esc(m.title)}</strong><p>${esc(m.artist)}${m.album ? ' — ' + esc(m.album) : ''}</p><div class="result-meta"><span class="badge">${esc(m.source)}</span><span>${esc(duration(m.duration))}</span><span>${esc(formats)}</span>${origin}${m.match ? badge(m.match.confident ? 'Encontrada' : 'Precisa revisar') : ''}</div>${m.license ? `<p>Licença informada pela fonte: ${esc(m.license)}</p>` : ''}${m.match ? `<p>${esc(m.match.score)}% de similaridade — ${esc(m.match.reason)}</p>` : ''}</div><div class="result-actions">${reviewing ? `<button class="button secondary" data-confirm="${esc(m.id)}">Confirmar gravação</button>` : ''}${buttons}${DESKTOP && !reviewing ? `<button class="icon-button" data-download="${esc(m.id)}" title="Outros formatos, incluindo áudio original" aria-label="Outros formatos">${icon('settings')}</button>` : ''}</div></article>`;
+    return `<article class="result">${reviewing ? '' : `<input type="checkbox" class="result-check" value="${esc(m.id)}" aria-label="Selecionar ${esc(m.title)}" ${selected.has(m.id) ? 'checked' : ''}>`}${cover('media',m)}<div class="result-info"><strong data-i18n-skip>${esc(m.title)}</strong><p data-i18n-skip>${esc(m.artist)}${m.album ? ' — ' + esc(m.album) : ''}</p><div class="result-meta"><span class="badge">${esc(m.source)}</span><span>${esc(duration(m.duration))}</span><span>${esc(formats)}</span>${origin}${m.match ? badge(m.match.confident ? 'Encontrada' : 'Precisa revisar') : ''}</div>${m.license ? `<p>Licença informada pela fonte: ${esc(m.license)}</p>` : ''}${m.match ? `<p>${esc(m.match.score)}% de similaridade — ${esc(tr(m.match.reason))}</p>` : ''}</div><div class="result-actions">${reviewing ? `<button class="button secondary" data-confirm="${esc(m.id)}">Confirmar gravação</button>` : ''}${buttons}${DESKTOP && !reviewing ? `<button class="icon-button" data-download="${esc(m.id)}" title="Outros formatos, incluindo áudio original" aria-label="Outros formatos">${icon('settings')}</button>` : ''}</div></article>`;
   }).join('');
 }
 
@@ -243,10 +249,10 @@ function renderReviews() {
   if(currentView!=='review') return;
   const filtered=filterItems('review',reviewTracks());showSearchCount(filtered);
   $('review-summary').textContent=`${filtered.length} música(s) para conferir. Confirme apenas a gravação que você reconhece.`;
-  setHTML('reviews', filtered.length ? pageItems('reviews',filtered).map(t=>`<article class="track">${cover('track',t)}<div class="result-info"><strong>${esc(t.title)}</strong><p>${esc(t.artist)}${t.album ? ' — '+esc(t.album) : ''}</p><div class="result-meta">${badge(t.state)}<span>${esc(duration(t.duration))}</span><span>${t.candidate_count} candidato(s)</span></div></div><div class="result-actions">${t.candidate_count ? `<button class="button primary" data-review="${esc(t.id)}">Comparar</button>` : ''}<button class="button secondary" data-search-track="${esc(t.id)}">${icon('search')}Buscar novamente</button>${noReviewButton(t)}</div></article>`).join('') : (pageItems('reviews',[]),empty('Nenhuma música pendente nesta pesquisa','As gravações duvidosas encontradas pelas buscas aparecem aqui.')));
+  setHTML('reviews', filtered.length ? pageItems('reviews',filtered).map(t=>`<article class="track">${cover('track',t)}<div class="result-info"><strong data-i18n-skip>${esc(t.title)}</strong><p data-i18n-skip>${esc(t.artist)}${t.album ? ' — '+esc(t.album) : ''}</p><div class="result-meta">${badge(t.state)}<span>${esc(duration(t.duration))}</span><span>${t.candidate_count} candidato(s)</span></div></div><div class="result-actions">${t.candidate_count ? `<button class="button primary" data-review="${esc(t.id)}">Comparar</button>` : ''}<button class="button secondary" data-search-track="${esc(t.id)}">${icon('search')}Buscar novamente</button>${noReviewButton(t)}</div></article>`).join('') : (pageItems('reviews',[]),empty('Nenhuma música pendente nesta pesquisa','As gravações duvidosas encontradas pelas buscas aparecem aqui.')));
   $('review-detail').hidden=!contextTrack;
   if(contextTrack) {
-    $('review-original').textContent=`Sua lista: ${contextTrack.artist} — ${contextTrack.title} — ${duration(contextTrack.duration)}${contextTrack.album ? ' — Álbum: '+contextTrack.album : ''} — ${contextTrack.state}`;
+    $('review-original').textContent=`Sua lista: ${contextTrack.artist} — ${contextTrack.title} — ${duration(contextTrack.duration)}${contextTrack.album ? ' — '+tr('Álbum')+': '+contextTrack.album : ''} — ${tr(contextTrack.state)}`;
     setHTML('review-candidates',contextTrack.candidates?.length ? resultCards(contextTrack.candidates,true) : empty('Nenhum candidato disponível','Tente buscar novamente.'));
   }
 }
@@ -256,6 +262,7 @@ function renderSettings() {
   $('settings-folder').textContent=state.output_folder || 'Escolha uma pasta no aplicativo Windows';
   if(!settingsDirty) document.querySelector(`input[name="folder-mode"][value="${state.folder_mode || 'same'}"]`).checked=true;
   if(!settingsDirty) $('background-enabled').checked=state.background_enabled!==false;
+  if(!settingsDirty) $('language').value=state.language || 'en';
   $('background-status').textContent=state.desktop_runtime?.available ? 'Bandeja pronta. O X recolhe a janela quando a opção está marcada. Os downloads continuam.' : 'Bandeja ainda indisponível. Enquanto isso, fechar a janela encerra o Acervo.';
   $('hide-window').disabled=!state.desktop_runtime?.available;
   const terms=searchText(tabQueries.settings).split(/\s+/).filter(Boolean);
@@ -288,7 +295,7 @@ function renderTracks() {
   const filtered=filterItems('library',state.tracks);
   showSearchCount(filtered);
   const shown=pageItems('tracks',filtered);
-  const html = filtered.length ? shown.map(t => `<article class="track"><input type="checkbox" class="track-check" value="${esc(t.id)}" aria-label="Selecionar ${esc(t.title)}" ${trackSelection.has(t.id) ? 'checked' : ''}>${cover('track',t)}<div class="result-info"><strong>${esc(t.title)}</strong><p>${esc(t.artist)}${t.album ? ' · ' + esc(t.album) : ''}</p><div class="result-meta">${badge(t.state)}<span>${esc(duration(t.duration))}</span></div></div><div class="result-actions"><button class="button secondary" data-search-track="${esc(t.id)}" ${batchRunning || t.state === 'Na fila' ? 'disabled' : ''}>${icon('search')}Buscar</button>${t.candidate_count ? `<button class="button secondary" data-review="${esc(t.id)}" ${t.state === 'Na fila' ? 'disabled' : ''}>Revisar</button>` : ''}${DESKTOP ? formatControl('track',t,'mp3')+formatControl('track',t,'mp4')+noReviewButton(t) : t.state === 'Encontrada' ? `<button class="icon-button" data-download-track="${esc(t.id)}" aria-label="Baixar ${esc(t.title)}">${icon('download')}</button>` : ''}</div></article>`).join('') : empty('Suas favoritas começam aqui.', 'Importe uma lista para pesquisar. Nenhuma conta Spotify é conectada nesta versão.');
+  const html = filtered.length ? shown.map(t => `<article class="track"><input type="checkbox" class="track-check" value="${esc(t.id)}" aria-label="Selecionar ${esc(t.title)}" ${trackSelection.has(t.id) ? 'checked' : ''}>${cover('track',t)}<div class="result-info"><strong data-i18n-skip>${esc(t.title)}</strong><p data-i18n-skip>${esc(t.artist)}${t.album ? ' · ' + esc(t.album) : ''}</p><div class="result-meta">${badge(t.state)}<span>${esc(duration(t.duration))}</span></div></div><div class="result-actions"><button class="button secondary" data-search-track="${esc(t.id)}" ${batchRunning || t.state === 'Na fila' ? 'disabled' : ''}>${icon('search')}Buscar</button>${t.candidate_count ? `<button class="button secondary" data-review="${esc(t.id)}" ${t.state === 'Na fila' ? 'disabled' : ''}>Revisar</button>` : ''}${DESKTOP ? formatControl('track',t,'mp3')+formatControl('track',t,'mp4')+noReviewButton(t) : t.state === 'Encontrada' ? `<button class="icon-button" data-download-track="${esc(t.id)}" aria-label="Baixar ${esc(t.title)}">${icon('download')}</button>` : ''}</div></article>`).join('') : empty('Suas favoritas começam aqui.', 'Importe uma lista para pesquisar. Nenhuma conta Spotify é conectada nesta versão.');
   setHTML('tracks',!filtered.length && tabQueries.library ? empty('Nenhuma música encontrada nesta pesquisa.','Tente outro título, artista, álbum ou estado.') : html);
   updateLibraryControls();
 }
@@ -376,13 +383,13 @@ async function prepareSelectedTracks() {
 
 function renderDesktopJob(j) {
   const active = activeStates.includes(j.state);
-  return `<article class="job"><div class="job-main">${cover('job',j)}<div class="result-info"><strong>${esc(j.title)}</strong><p>${esc(j.artist)} · ${j.output === 'mp4' ? 'MP4 · vídeo' : j.output === 'mp3' ? 'MP3' : 'Áudio original'} · ${esc(time(j.created))}</p><div class="result-meta">${badge(j.state)}${j.auto_selected ? badge('Escolha automática') : ''}${j.ready ? `<span>${esc(bytes(j.size))} · Salvo no PC</span>` : j.state === 'Concluída' ? '<span>Arquivo movido ou removido da pasta</span>' : ''}</div></div></div><div class="result-actions">${active ? `<button class="icon-button" data-cancel="${esc(j.id)}" aria-label="Cancelar ${esc(j.title)}" ${j.state === 'Cancelando' ? 'disabled' : ''}>${icon('close')}</button>` : ''}${j.ready ? `<button class="button primary" data-play-saved="${esc(j.id)}">${icon('wave')}${j.output === 'mp4' ? 'Ver vídeo' : 'Ouvir'}</button><button class="button secondary" data-open-folder="${esc(j.id)}">${icon('folder')}Abrir pasta</button><button class="button secondary" data-move-job="${esc(j.id)}">${icon('folder')}Mover</button>` : j.state === 'Precisa revisar' && j.item_id ? `<button class="button secondary" data-review-job="${esc(j.item_id)}">Revisar gravação</button>` : !active ? `<button class="button secondary" data-retry="${esc(j.id)}">${icon('retry')}Tentar novamente</button>` : ''}</div>${active ? `<div class="job-progress"><progress max="100" ${j.progress == null ? '' : `value="${esc(Math.round(j.progress))}"`} aria-label="Progresso de ${esc(j.title)}"></progress><span>${j.state === 'Convertendo' ? 'Convertendo' : j.progress == null ? bytes(j.bytes) : Math.round(j.progress) + '%'}</span></div>` : ''}${j.error ? `<p class="error job-error">${esc(j.error)}</p>` : ''}</article>`;
+  return `<article class="job"><div class="job-main">${cover('job',j)}<div class="result-info"><strong data-i18n-skip>${esc(j.title)}</strong><p><span data-i18n-skip>${esc(j.artist)}</span> · ${j.output === 'mp4' ? 'MP4 · vídeo' : j.output === 'mp3' ? 'MP3' : 'Áudio original'} · ${esc(time(j.created))}</p><div class="result-meta">${badge(j.state)}${j.auto_selected ? badge('Escolha automática') : ''}${j.ready ? `<span>${esc(bytes(j.size))} · Salvo no PC</span>` : j.state === 'Concluída' ? '<span>Arquivo movido ou removido da pasta</span>' : ''}</div></div></div><div class="result-actions">${active ? `<button class="icon-button" data-cancel="${esc(j.id)}" aria-label="Cancelar ${esc(j.title)}" ${j.state === 'Cancelando' ? 'disabled' : ''}>${icon('close')}</button>` : ''}${j.ready ? `<button class="button primary" data-play-saved="${esc(j.id)}">${icon('wave')}${j.output === 'mp4' ? 'Ver vídeo' : 'Ouvir'}</button><button class="button secondary" data-open-folder="${esc(j.id)}">${icon('folder')}Abrir pasta</button><button class="button secondary" data-move-job="${esc(j.id)}">${icon('folder')}Mover</button>` : j.state === 'Precisa revisar' && j.item_id ? `<button class="button secondary" data-review-job="${esc(j.item_id)}">Revisar gravação</button>` : !active ? `<button class="button secondary" data-retry="${esc(j.id)}">${icon('retry')}Tentar novamente</button>` : ''}</div>${active ? `<div class="job-progress"><progress max="100" ${j.progress == null ? '' : `value="${esc(Math.round(j.progress))}"`} aria-label="Progresso de ${esc(j.title)}"></progress><span>${j.state === 'Convertendo' ? 'Convertendo' : j.progress == null ? bytes(j.bytes) : Math.round(j.progress) + '%'}</span></div>` : ''}${j.error ? `<p class="error job-error">${esc(j.error)}</p>` : ''}</article>`;
 }
 
 function renderJob(j) {
   if (DESKTOP) return renderDesktopJob(j);
   const active = activeStates.includes(j.state);
-  return `<article class="job"><div class="job-main">${cover('job',j)}<div class="result-info"><strong>${esc(j.title)}</strong><p>${esc(j.artist)} · ${j.output === 'mp4' ? 'MP4 · vídeo' : j.output === 'mp3' ? 'MP3' : 'Áudio original'} · ${esc(time(j.created))}</p><div class="result-meta">${badge(j.state)}${j.expired ? '<span>Arquivo temporário expirado</span>' : j.ready ? `<span>${esc(bytes(j.size))}</span>` : ''}</div></div></div><div class="result-actions">${active ? `<button class="icon-button" data-cancel="${esc(j.id)}" aria-label="Cancelar ${esc(j.title)}" ${j.state === 'Cancelando' ? 'disabled' : ''}>${icon('close')}</button>` : ''}${j.ready ? `<a class="button primary" href="/api/jobs/${esc(j.id)}/file" download>${icon('download')}Salvar no aparelho</a>` : j.state === 'Precisa revisar' && j.item_id ? `<button class="button secondary" data-review-job="${esc(j.item_id)}">Revisar gravação</button>` : !active ? `<button class="button secondary" data-retry="${esc(j.id)}">${icon('retry')}Tentar novamente</button>` : ''}</div>${active ? `<div class="job-progress"><progress max="100" ${j.progress == null ? '' : `value="${esc(Math.round(j.progress))}"`} aria-label="Progresso de ${esc(j.title)}"></progress><span>${j.state === 'Convertendo' ? 'Convertendo' : j.progress == null ? bytes(j.bytes) : Math.round(j.progress) + '%'}</span></div>` : ''}${j.error ? `<p class="error job-error">${esc(j.error)}</p>` : ''}</article>`;
+  return `<article class="job"><div class="job-main">${cover('job',j)}<div class="result-info"><strong data-i18n-skip>${esc(j.title)}</strong><p><span data-i18n-skip>${esc(j.artist)}</span> · ${j.output === 'mp4' ? 'MP4 · vídeo' : j.output === 'mp3' ? 'MP3' : 'Áudio original'} · ${esc(time(j.created))}</p><div class="result-meta">${badge(j.state)}${j.expired ? '<span>Arquivo temporário expirado</span>' : j.ready ? `<span>${esc(bytes(j.size))}</span>` : ''}</div></div></div><div class="result-actions">${active ? `<button class="icon-button" data-cancel="${esc(j.id)}" aria-label="Cancelar ${esc(j.title)}" ${j.state === 'Cancelando' ? 'disabled' : ''}>${icon('close')}</button>` : ''}${j.ready ? `<a class="button primary" href="/api/jobs/${esc(j.id)}/file" download>${icon('download')}Salvar no aparelho</a>` : j.state === 'Precisa revisar' && j.item_id ? `<button class="button secondary" data-review-job="${esc(j.item_id)}">Revisar gravação</button>` : !active ? `<button class="button secondary" data-retry="${esc(j.id)}">${icon('retry')}Tentar novamente</button>` : ''}</div>${active ? `<div class="job-progress"><progress max="100" ${j.progress == null ? '' : `value="${esc(Math.round(j.progress))}"`} aria-label="Progresso de ${esc(j.title)}"></progress><span>${j.state === 'Convertendo' ? 'Convertendo' : j.progress == null ? bytes(j.bytes) : Math.round(j.progress) + '%'}</span></div>` : ''}${j.error ? `<p class="error job-error">${esc(j.error)}</p>` : ''}</article>`;
 }
 
 function renderJobs() {
@@ -412,7 +419,7 @@ function renderEvents() {
   const shown=pageItems('events',filtered);
   const html = filtered.length ? shown.map(e => `<article class="event"><time datetime="${esc(e.time)}">${esc(time(e.time))}</time><span>${esc(e.message)}${e.job_id ? `<br><small class="muted">Tarefa ${esc(e.job_id)}</small>` : ''}</span></article>`).join('') : empty('Nenhum evento registrado.');
   setHTML('events',!filtered.length && tabQueries.activity ? empty('Nenhum evento encontrado nesta pesquisa.') : html);
-  $('engine-status').textContent = DESKTOP ? `Ferramentas de áudio ${state.engine.ffmpeg && state.engine.ffprobe && state.engine.node ? 'disponíveis no programa' : 'incompletas: extraia o pacote inteiro, incluindo a pasta _internal'}. Os horários abaixo seguem o relógio deste computador.` : `FFmpeg: ${state.engine.ffmpeg ? 'disponível' : 'não instalado'} · ffprobe: ${state.engine.ffprobe ? 'disponível' : 'não instalado'} · Node (YouTube): ${state.engine.node ? 'disponível' : 'não instalado'}. A disponibilidade das ferramentas não garante acesso às fontes externas.`;
+  $('engine-status').textContent = DESKTOP ? `Ferramentas de áudio ${state.engine.ffmpeg && state.engine.ffprobe && state.engine.node ? tr('disponíveis no programa') : tr('incompletas: extraia o pacote inteiro, incluindo a pasta _internal')}. Os horários abaixo seguem o relógio deste computador.` : `FFmpeg: ${state.engine.ffmpeg ? tr('disponível') : tr('não instalado')} · ffprobe: ${state.engine.ffprobe ? tr('disponível') : tr('não instalado')} · Node (YouTube): ${state.engine.node ? tr('disponível') : tr('não instalado')}. A disponibilidade das ferramentas não garante acesso às fontes externas.`;
 }
 
 function formatOptions(m) {
@@ -445,7 +452,7 @@ async function prepareDownloads(entries) {
     const formats = [...media.formats].sort((a, b) => (preferred === 'mp4' ? Number(b.kind === 'video') - Number(a.kind === 'video') : 0) || (b.abr || 0) - (a.abr || 0));
     pendingDownloads.push({media: {...media, formats}, track: entry.track, preferred});
   }
-  $('download-options').innerHTML = pendingDownloads.map((e, i) => `<div class="download-item" data-index="${i}"><div class="download-fields"><div><label for="dl-artist-${i}">Artista</label><input id="dl-artist-${i}" value="${esc(e.track?.artist || e.media.artist)}" maxlength="200" required></div><div><label for="dl-title-${i}">Música</label><input id="dl-title-${i}" value="${esc(e.track?.title || e.media.title)}" maxlength="200" required></div></div><label for="dl-format-${i}">Formato disponível na fonte · ${esc(e.media.source)}</label><select id="dl-format-${i}" data-format-index="${i}">${formatOptions(e.media)}</select><label for="dl-output-${i}">Arquivo de saída</label><select id="dl-output-${i}">${outputOptions(e.media, e.media.formats[0].id)}</select></div>`).join('');
+  $('download-options').innerHTML = pendingDownloads.map((e, i) => `<div class="download-item" data-index="${i}"><div class="download-fields"><div><label for="dl-artist-${i}">Artista</label><input id="dl-artist-${i}" value="${esc(e.track?.artist || e.media.artist)}" maxlength="200" required></div><div><label for="dl-title-${i}">Música</label><input id="dl-title-${i}" value="${esc(e.track?.title || e.media.title)}" maxlength="200" required></div></div><label for="dl-format-${i}">Formato disponível na fonte · ${esc(tr(e.media.source))}</label><select id="dl-format-${i}" data-format-index="${i}">${formatOptions(e.media)}</select><label for="dl-output-${i}">Arquivo de saída</label><select id="dl-output-${i}">${outputOptions(e.media, e.media.formats[0].id)}</select></div>`).join('');
   pendingDownloads.forEach((entry, index) => {
     const output = $('dl-output-' + index);
     const preferred = [...output.options].filter(option => option.value.split(':')[0] === entry.preferred).pop();
@@ -592,7 +599,7 @@ $('search-tracks').addEventListener('click', () => searchTracks(state.tracks.fil
 $('stop-search').addEventListener('click', () => { stopBatch = true; $('batch-status').textContent = 'A busca atual termina; as próximas não serão iniciadas.'; });
 $('download-tracks').addEventListener('click', () => prepareSelectedTracks().catch(error => toast(error.message, true)));
 $('clear-library').addEventListener('click', async () => {
-  if (!window.confirm('Remover a lista importada do servidor? O histórico de tarefas será preservado.')) return;
+  if (!window.confirm(tr('Remover a lista importada do servidor? O histórico de tarefas será preservado.'))) return;
   try { await api('library/clear', {}); trackSelection.clear(); await refresh(); toast('Lista removida.'); }
   catch (error) { toast(error.message, true); }
 });
@@ -724,7 +731,13 @@ $('settings-form').addEventListener('change',()=>{settingsDirty=true;});
 $('settings-form').addEventListener('submit',e=>{
   e.preventDefault();busy(e.submitter,'Salvando…',async()=>{
     const folder_mode=document.querySelector('input[name="folder-mode"]:checked').value;
-    await api('settings',{folder_mode,background_enabled:$('background-enabled').checked});settingsDirty=false;await refresh(true);$('settings-message').textContent='Configurações salvas';
+    const language=$('language').value;
+    await api('settings',{folder_mode,background_enabled:$('background-enabled').checked,language});settingsDirty=false;
+    if(language!==window.AcervoI18n.language) {
+      if(window.pywebview?.api?.update_language) await native('update_language');
+      window.location.reload(); return;
+    }
+    await refresh(true);$('settings-message').textContent='Configurações salvas';
   });
 });
 
@@ -765,7 +778,7 @@ function playSaved(j) {
   if(!j?.ready || j.state!=='Concluída') return toast('O arquivo ainda não está disponível.',true);
     if (j.output === 'mp4') {
       $('audio').pause();
-      $('video-title').textContent = j.artist + ' — ' + j.title;
+      setUserText('video-title', j.artist + ' — ' + j.title);
       $('video').src = '/api/jobs/' + j.id + '/file?play=true';
       $('video-dialog').showModal();
       $('video').play().catch(() => toast('Toque no vídeo para iniciar.'));
@@ -774,7 +787,7 @@ function playSaved(j) {
     $('player-cover').innerHTML=cover('job',j,'player-art');
     localUrls.forEach(url => URL.revokeObjectURL(url)); localUrls = []; localFiles = [];
     $('audio').src = '/api/jobs/' + j.id + '/file?play=true';
-    $('player-title').textContent = j.artist + ' — ' + j.title;
+    setUserText('player-title', j.artist + ' — ' + j.title);
     $('player-subtitle').textContent = 'Arquivo salvo no seu PC';
     $('audio').play().catch(() => toast('Toque no player para iniciar.'));
 }
@@ -792,9 +805,9 @@ function playLocal(index, autoplay = true) {
   localIndex = index;
   $('player-cover').innerHTML=icon('wave');
   $('audio').src = localUrls[index];
-  $('player-title').textContent = localFiles[index].name;
+  setUserText('player-title', localFiles[index].name);
   $('player-subtitle').textContent = `Arquivo local · ${index + 1} de ${localFiles.length} · não enviado ao servidor`;
-  $('playlist').innerHTML = localFiles.map((f, i) => `<button data-play="${i}" class="${index === i ? 'active' : ''}">${i + 1}. ${esc(f.name)}</button>`).join('');
+  $('playlist').innerHTML = localFiles.map((f, i) => `<button data-i18n-skip data-play="${i}" class="${index === i ? 'active' : ''}">${i + 1}. ${esc(f.name)}</button>`).join('');
   if (autoplay) $('audio').play().catch(() => toast('Toque no player para iniciar a reprodução.'));
 }
 $('local-files').addEventListener('change', e => {
