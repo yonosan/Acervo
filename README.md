@@ -1,5 +1,7 @@
 # Acervo para Windows
 
+![Acervo — Sua música, com você](docs/acervo.png)
+
 Aplicativo pessoal para pesquisar e salvar mídia própria ou autorizada, com interface em português do Brasil. Versão 1.8.0.
 
 ## Recursos implementados
